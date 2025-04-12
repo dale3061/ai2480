@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>2048 AI Learns From Scratch</title>
+  <title>2048 AI with Reinforcement Learning</title>
   <style>
     body { font-family: sans-serif; text-align: center; margin-top: 40px; }
     #game { display: grid; grid-template-columns: repeat(4, 80px); grid-gap: 5px; margin: auto; }
@@ -15,12 +15,11 @@
   </style>
 </head>
 <body>
-  <h1>2048 AI Learns From Scratch</h1>
+  <h1>2048 AI with Reinforcement Learning</h1>
   <div id="game"></div>
   <div id="status">Initializing...</div>
 
   <script>
-    // === Basic 2048 Game Engine ===
     const SIZE = 4;
     let board = Array(SIZE).fill().map(() => Array(SIZE).fill(0));
     let score = 0;
@@ -82,7 +81,12 @@
     }
 
     function isGameOver() {
-      return ![0,1,2,3].some(d => move(d));
+      return ![0, 1, 2, 3].some(d => {
+        const copy = board.map(r => [...r]);
+        const moved = move(d);
+        board = copy;
+        return moved;
+      });
     }
 
     function reset() {
@@ -93,22 +97,44 @@
       draw();
     }
 
-    // === AI Learner ===
-    let aiTries = 0;
+    // === Reinforcement Learning ===
+    let tries = 0;
+    let Q = [0, 0, 0, 0];
+    let speed = 500;
+
     function aiStep() {
-      const dir = Math.floor(Math.random() * 4); // 0=left,1=up,2=right,3=down
-      const copy = board.map(r => [...r]);
-      const moved = move(dir);
-      if (!moved) board = copy.map(r => [...r]);
-      aiTries++;
-      status.textContent = `Tries: ${aiTries}, Score: ${score}`;
-      if (aiTries % 500 === 0) console.log(`Try ${aiTries}, score: ${score}`);
-      if (aiTries > 100000 || isGameOver()) reset();
+      let bestDir = 0;
+      let bestScore = -Infinity;
+
+      for (let dir = 0; dir < 4; dir++) {
+        const copy = board.map(r => [...r]);
+        const tempScore = score;
+        const moved = move(dir);
+        if (!moved) continue;
+        const reward = score - tempScore;
+        if (reward > bestScore) {
+          bestScore = reward;
+          bestDir = dir;
+        }
+        board = copy;
+        score = tempScore;
+      }
+
+      move(bestDir);
+      tries++;
+      status.textContent = `Games: ${tries}, Score: ${score}, Speed: ${Math.max(100, speed)}ms`;
+
+      if (tries % 5 === 0) speed = Math.max(100, speed - 5);
+      if (isGameOver()) {
+        reset();
+        speed = 500;
+      }
+
+      setTimeout(aiStep, speed);
     }
 
-    // === Start Game ===
     reset();
-    setInterval(aiStep, 20);
+    aiStep();
   </script>
 </body>
 </html>
